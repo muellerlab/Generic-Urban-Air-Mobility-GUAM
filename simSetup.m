@@ -1,8 +1,12 @@
 % close any previously loaded vehicle-specific model
+setupTimer = guamTiming('start', 'Setup: total');
+setupStageTimer = guamTiming('start', 'Setup: close model and configure paths');
 close_system('GUAM',0);
 
 % setup default base paths
 setupPath;
+guamTiming('stop', setupStageTimer);
+setupStageTimer = guamTiming('start', 'Setup: variants, units and reference inputs');
 
 % setup the structure containing enumeration values used to set types in
 % SimIn to determine variant selections (used by setupTypes.m)
@@ -114,19 +118,29 @@ else
 end
 
 % once all choices are selected, run setup
+guamTiming('stop', setupStageTimer);
+setupStageTimer = guamTiming('start', 'Setup: vehicle and environment');
 SimIn = setup(SimIn, target);  % standard simulation mode
 %SimIn = setup(SimIn, target, true);  % release simulation mode
+guamTiming('stop', setupStageTimer);
 
 % Setup Parameters
+setupStageTimer = guamTiming('start', 'Setup: parameters');
 setupParameters(SimIn);
+guamTiming('stop', setupStageTimer);
 
 % create variant control objects
+setupStageTimer = guamTiming('start', 'Setup: variant control objects');
 setupVariants;
+guamTiming('stop', setupStageTimer);
 
 % create buses
+setupStageTimer = guamTiming('start', 'Setup: buses');
 setupBuses;
+guamTiming('stop', setupStageTimer);
 
 % Determmine which user prescribed output file to utilize..
+setupStageTimer = guamTiming('start', 'Setup: select output function');
 if ~isfield(userStruct,'outputFname') || isempty(userStruct.outputFname)
     % Utilize the default fname
     [res] = copyfile(sprintf('./%s/setup/defaultSimOut.m',vehDir), sprintf('./%s/setup/mySimOutFunc.m',vehDir));
@@ -137,9 +151,13 @@ else % Determine if the user defined name is valid
     % Delete any buses that start with 'BUSOUT_' to ensure that the correct user specified buses are used..
     clear 'BUS_USER_*' vehDir
 end
+guamTiming('stop', setupStageTimer);
 
 % Build the userdefined SimOut bus structure and update GUAM
+setupStageTimer = guamTiming('start', 'Setup: build output bus and save model');
 Build_User_SimOut_BUS('mySimOutFunc', 'BUS_USER_', 'BUS_SIM_OUT')
+guamTiming('stop', setupStageTimer);
 
 % Clear target after setup (so it won't be accidentally used next run)
 clear target
+guamTiming('stop', setupTimer);

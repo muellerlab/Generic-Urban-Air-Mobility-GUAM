@@ -20,7 +20,13 @@ codegen/
 # Generated animation videos and local experiment results
 *.avi
 /results/
+/Exec_Scripts/timing_logs/
+/Exec_Scripts/SimOut_case*.csv
 
 # Operating-system metadata
 .DS_Store
 Thumbs.db
+
+/Exec_Scripts/SimOut_case*.mat
+/Exec_Scripts/own_traj_*.mat
+/Exec_Scripts/own_traj_*.csv

@@ -25,6 +25,98 @@
 % *************************************************************************   
 % To run a simulation example case, just execute the RUNME.m script at the top level!  
 % **************************************************************************  
+
+`RUNME` saves both `Exec_Scripts/SimOut_caseN.mat` and
+`Exec_Scripts/SimOut_caseN.csv`. The MAT file retains the original MATLAB
+objects and complete debug output. The CSV contains only 23 columns: shared
+`time_s`, position (3), velocity (3), inertial-to-body quaternion (4), body
+angular rates (3), and motor RPMs (9). States retain GUAM's native ft, ft/s,
+dimensionless quaternion and rad/s units. Motor speeds are converted from
+rad/s to RPM; motors 1-8 are lift rotors and motor 9 is the pusher.
+Columns use names such as `Vehicle.EOM.InertialData.Pos_bii.Data[0]` and
+`Vehicle.PropAct.EngSpeed_rpm.Data[0]`, with zero-based component indices.
+The exporter checks that all signals share the same timestamps; it does not
+resample. The Python script uses these states and RPMs, with quaternion
+components for attitude.
+
+Plot the CSV without a MATLAB-file reader dependency:
+
+```sh
+uv run Scripts/plot_simout.py Exec_Scripts/SimOut_case6.csv
+```
+
+To export a previously saved result without rerunning the simulation:
+
+```matlab
+loaded = load('Exec_Scripts/SimOut_case6.mat', 'SimOut');
+exportSimOutCsv(loaded.SimOut, 'Exec_Scripts/SimOut_case6.csv');
+```
+
+`RUNME` prints wall-clock timing for preprocessing, the simulation, result
+extraction, MAT-file saving, analysis, and plotting. Setup is broken down into
+paths, reference inputs, vehicle/environment setup, parameters, variants,
+buses, and output-bus/model updates. Simulink's initialization, execution,
+termination, and total times are reported separately after `sim` returns.
+
+Each run writes a CSV under `Exec_Scripts/timing_logs/`; `timingLogFile` holds
+its path and `timingSummary` holds the completed-stage table in the workspace.
+START events are flushed immediately so an interrupted run still identifies
+the unfinished stage. FAILED events are written when `RUNME` catches an error,
+then the original error is rethrown. Nested timings overlap and should not be
+summed. The total excludes time spent choosing a case at the input prompt.
+
+For a quick comparison of the completed stages:
+
+```matlab
+sortrows(timingSummary, 'WallSeconds', 'descend')
+events = readtable(timingLogFile);
+```
+
+Calling `simSetup` directly also logs its setup stages. Call
+`guamTiming('reset')` before a new manual run to create a fresh CSV. Additional
+manual stages can be timed with:
+
+```matlab
+token = guamTiming('start', 'Custom postprocessing');
+% ... your work ...
+guamTiming('stop', token);
+```
+
+`RUNME` also enables Simulink component profiling by default. At the end it
+prints `componentTiming`, with time accumulated across profiled callbacks for
+turbulence, atmosphere, aerodynamics, propulsion, control, actuators, equations
+of motion, sensors, and other components, followed by a total. Each block's
+self time contributes to exactly one category, avoiding double-counting of
+parent subsystems. Categories follow GUAM subsystem paths; inspect
+`blockTiming` for the contributing paths, self times, inclusive times, and
+call counts. This includes block startup and termination callbacks as well as
+timestep work. A combined aero/propulsion implementation remains combined.
+Zero indicates no separately timed active blocks, not necessarily zero cost.
+
+The same timing-log filename prefix is used for `_components.csv`,
+`_blocks.csv`, `_accounting.csv`, and `_profile.mat`. The MAT file holds the
+raw `profilerData` object for loading into the Simulink Profiler or generating
+an HTML report with `generateReport(profilerData)`. `profileAccounting`
+compares the self-time sum, profiler root inclusive time, and Simulink's
+execution wall time; those measurements are not forced to match.
+
+Profiling adds overhead. For normal speed comparisons, disable it before
+running `RUNME`:
+
+```matlab
+userStruct.profileComponents = false;
+```
+
+For a manually prepared model, the equivalent profiling workflow is:
+
+```matlab
+out = sim('GUAM', 'ReturnWorkspaceOutputs', 'on', 'Profile', 'on');
+info = out.SimulationMetadata.TimingInfo;
+[componentTiming, blockTiming, profileAccounting] = guamComponentTiming( ...
+    info.ProfilerData, info.ExecutionElapsedWallTime, ...
+    fullfile('Exec_Scripts', 'timing_logs', 'manual_run'));
+```
+Create the output directory first if you have not run the timing logger.
   
 % This simulation is a generic UAM simulation.  It includes a generic   
 % transition aircraft model representative of a NASA Lift+Cruise   

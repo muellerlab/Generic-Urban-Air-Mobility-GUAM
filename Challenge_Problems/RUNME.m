@@ -17,8 +17,8 @@
 
 userStruct.variants.refInputType = 4; % 1=FOUR_RAMP, 2= ONE_RAMP, 3=Timeseries, 4=Piecewise Bezier, 5=Default(doublets)
 userStruct.variants.fmType      = 2; % 1 = Aerodynamic model, 1 = s-function, 2 = polynomial
-userStruct.variants.propType    = 4; % Select- propulsor model, 1=None, 2=First Order, 3=Second Order, 4 =First order fail
-userStruct.variants.actType     = 4; % Select aero effector model, 1=None, 2=First Order, 3=Second Order, 4 =First order fail
+userStruct.variants.propType    = 2; % Select- propulsor model, 1=None, 2=First Order, 3=Second Order, 4 =First order fail
+userStruct.variants.actType     = 2; % Select aero effector model, 1=None, 2=First Order, 3=Second Order, 4 =First order fail
 
 file_obj = matfile('./Data_Set_1.mat'); % Specify the own-ship trajectory file
 traj_run_num = 3; % Select the desired own-ship trajectory number
@@ -52,7 +52,7 @@ cd('../');
 simSetup % Run the model setup scripts
 
 % Implement failure scenario if desired.
-if 1 % Change to 0/1 to add failure scenario as desired
+if 0 % Change to 0/1 to add failure scenario as desired
     % Load the failure scenario Challenge Problem data sets
     fail_obj = matfile('./Challenge_Problems/Data_Set_4.mat');
 
@@ -72,3 +72,11 @@ end
 
 % Open the GUAM model 
 open(model)
+
+simResult = sim('GUAM', 'ReturnWorkspaceOutputs', 'on');
+
+logsout = simResult.logsout;
+SimOut = logsout{1}.Values;
+simPlots_GUAM;
+
+save('Exec_Scripts/own_traj_3.mat', 'SimOut', '-v7.3');
